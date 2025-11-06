@@ -1,5 +1,5 @@
 <?php
-session_start();
+require_once __DIR__ . '/../includes/config.php';
 
 if (!isset($_SESSION['userid'])) {
     header("Location: ../");
@@ -7,54 +7,6 @@ if (!isset($_SESSION['userid'])) {
 }
 
 $userid = $_SESSION['userid'];
-
-function read_env_file($file_path)
-{
-    $env_file = file_get_contents($file_path);
-    $env_lines = explode("\n", $env_file);
-    $env_data = [];
-
-    foreach ($env_lines as $line) {
-        $line_parts = explode('=', $line);
-        if (count($line_parts) == 2) {
-            $key = trim($line_parts[0]);
-            $value = trim($line_parts[1]);
-            $env_data[$key] = $value;
-        }
-    }
-
-    return $env_data;
-}
-
-$env_data = read_env_file('../.env');
-
-$db_host = $env_data['DB_SERVER'] ?? '';
-$db_username = $env_data['DB_USERNAME'] ?? '';
-$db_password = $env_data['DB_PASSWORD'] ?? '';
-$db_name = $env_data['DB_NAME'] ?? '';
-
-$business_name = $env_data['BUSINESS_NAME'] ?? '';
-$lang_code = $env_data['LANG_CODE'] ?? '';
-$version = $env_data["APP_VERSION"] ?? '';
-$currency = $env_data['CURRENCY'] ?? '';
-
-$lang = $lang_code;
-
-$langDir = __DIR__ . "/../assets/lang/";
-
-$langFile = $langDir . "$lang.json";
-
-if (!file_exists($langFile)) {
-    die("A nyelvi fájl nem található: $langFile");
-}
-
-$translations = json_decode(file_get_contents($langFile), true);
-
-$conn = new mysqli($db_host, $db_username, $db_password, $db_name);
-
-if ($conn->connect_error) {
-    die("Kapcsolódási hiba: " . $conn->connect_error);
-}
 
 $sql = "SELECT * FROM current_tickets WHERE userid = ? ORDER BY expiredate DESC";
 $stmt = $conn->prepare($sql);
@@ -203,32 +155,10 @@ if (!file_exists($filename)) {
 
     <div class="container-fluid">
         <div class="row content">
-            <div class="col-sm-2 sidenav hidden-xs text-center">
-                <h2><img src="../assets/img/brand/logo.png" width="105px" alt="Logo"></h2>
-                <p class="lead mb-4 fs-4"><?php echo $business_name ?></p>
-                <ul class="nav nav-pills nav-stacked">
-                    <li class="sidebar-item active">
-                        <a class="sidebar-link" href="#">
-                            <i class="bi bi-house"></i> <?php echo $translations["mainpage"]; ?>
-                        </a>
-                    </li>
-                    <li class="sidebar-item">
-                        <a class="sidebar-link" href="stats/">
-                            <i class="bi bi-graph-up"></i> <?php echo $translations["statspage"]; ?>
-                        </a>
-                    </li>
-                    <li class="sidebar-item">
-                        <a class="sidebar-link" href="profile/">
-                            <i class="bi bi-person-badge"></i> <?php echo $translations["profilepage"]; ?>
-                        </a>
-                    </li>
-                    <li class="sidebar-item">
-                        <a class="sidebar-link" href="invoices/">
-                            <i class="bi bi-receipt"></i> <?php echo $translations["invoicepage"]; ?>
-                        </a>
-                    </li>
-                </ul><br>
-            </div>
+            <?php
+            $current_page = 'dashboard';
+            require_once __DIR__ . '/../includes/user_sidebar.php';
+            ?>
             <br>
             <div class="col-sm-10">
                 <div class="d-none topnav d-sm-inline-block">
