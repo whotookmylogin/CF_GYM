@@ -86,21 +86,38 @@ $is_new_version_available = version_compare($latest_version, $current_version) >
 
 // Új bérlet hozzáadása
 if (isset($_POST['add_ticket'])) {
-    $name = $_POST['name'];
-    $expire_days = $_POST['expire_days'] === 'unlimited' ? 'NULL' : $_POST['expire_days'];
-    $price = $_POST['price'];
-    $occasions = $_POST['occasions'] === '' ? 'NULL' : $_POST['occasions'];
+    $name = $_POST['name'] ?? '';
+    $expire_days = $_POST['expire_days'] ?? '';
+    $price = $_POST['price'] ?? 0;
+    $occasions = $_POST['occasions'] ?? '';
 
-    $sql = "INSERT INTO tickets (name, expire_days, price, occasions) 
-            VALUES ('$name', $expire_days, $price, $occasions)";
-    mysqli_query($conn, $sql);
+    // Use prepared statement to prevent SQL injection
+    if ($expire_days === 'unlimited') {
+        $sql = "INSERT INTO tickets (name, expire_days, price, occasions) VALUES (?, NULL, ?, ?)";
+        $stmt = $conn->prepare($sql);
+        $occasions_value = ($occasions === '') ? null : (int)$occasions;
+        $stmt->bind_param("sdi", $name, $price, $occasions_value);
+    } else {
+        $sql = "INSERT INTO tickets (name, expire_days, price, occasions) VALUES (?, ?, ?, ?)";
+        $stmt = $conn->prepare($sql);
+        $occasions_value = ($occasions === '') ? null : (int)$occasions;
+        $stmt->bind_param("sidi", $name, $expire_days, $price, $occasions_value);
+    }
+
+    $stmt->execute();
+    $stmt->close();
 }
 
 // Bérlet törlése
 if (isset($_GET['delete'])) {
-    $id = $_GET['delete'];
-    $sql = "DELETE FROM tickets WHERE id = $id";
-    mysqli_query($conn, $sql);
+    $id = (int)$_GET['delete'];
+
+    // Use prepared statement to prevent SQL injection
+    $sql = "DELETE FROM tickets WHERE id = ?";
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param("i", $id);
+    $stmt->execute();
+    $stmt->close();
 }
 
 // Bérletek getter

@@ -1,5 +1,5 @@
 <?php
-session_start();
+require_once __DIR__ . '/../../includes/config.php';
 
 if (!isset($_SESSION['adminuser'])) {
     header("Location: ../");
@@ -7,54 +7,6 @@ if (!isset($_SESSION['adminuser'])) {
 }
 
 $userid = $_SESSION['adminuser'];
-
-function read_env_file($file_path)
-{
-    $env_file = file_get_contents($file_path);
-    $env_lines = explode("\n", $env_file);
-    $env_data = [];
-
-    foreach ($env_lines as $line) {
-        $line_parts = explode('=', $line);
-        if (count($line_parts) == 2) {
-            $key = trim($line_parts[0]);
-            $value = trim($line_parts[1]);
-            $env_data[$key] = $value;
-        }
-    }
-
-    return $env_data;
-}
-
-$env_data = read_env_file('../../.env');
-
-$db_host = $env_data['DB_SERVER'] ?? '';
-$db_username = $env_data['DB_USERNAME'] ?? '';
-$db_password = $env_data['DB_PASSWORD'] ?? '';
-$db_name = $env_data['DB_NAME'] ?? '';
-
-$business_name = $env_data['BUSINESS_NAME'] ?? '';
-$lang_code = $env_data['LANG_CODE'] ?? '';
-$version = $env_data["APP_VERSION"] ?? '';
-$capacity = $env_data["CAPACITY"] ?? '';
-
-$lang = $lang_code;
-
-$langDir = __DIR__ . "/../../assets/lang/";
-
-$langFile = $langDir . "$lang.json";
-
-if (!file_exists($langFile)) {
-    die("A nyelvi fájl nem található: $langFile");
-}
-
-$translations = json_decode(file_get_contents($langFile), true);
-
-$conn = new mysqli($db_host, $db_username, $db_password, $db_name);
-
-if ($conn->connect_error) {
-    die("Kapcsolódási hiba: " . $conn->connect_error);
-}
 
 
 $months = [
@@ -124,17 +76,8 @@ if ($stmt->num_rows > 0) {
 }
 $stmt->close();
 
-$file_path = 'https://api.gymoneglobal.com/latest/version.txt';
-
-$ch = curl_init();
-curl_setopt($ch, CURLOPT_URL, $file_path);
-curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-$latest_version = curl_exec($ch);
-curl_close($ch);
-
-$current_version = $version;
-
-$is_new_version_available = version_compare($latest_version, $current_version) > 0;
+// Check for available updates
+$is_new_version_available = check_for_updates($version);
 // SUM DAILY USERS
 
 $sql = "SELECT COALESCE(SUM(number_of_people), 0) AS total_people FROM temp_dailyworkout";
@@ -297,137 +240,10 @@ foreach ($data as $item) {
 
     <div class="container-fluid">
         <div class="row content">
-            <div class="col-sm-2 sidenav hidden-xs text-center">
-                <h2><img src="../../assets/img/logo.png" width="105px" alt="Logo"></h2>
-                <p class="lead mb-4 fs-4"><?php echo $business_name ?> - <?php echo $version; ?></p>
-                <ul class="nav nav-pills nav-stacked">
-                    <li class="sidebar-item active">
-                        <a class="sidebar-link" href="#">
-                            <i class="bi bi-speedometer"></i> <?php echo $translations["mainpage"]; ?>
-                        </a>
-                    </li>
-                    <li class="sidebar-item">
-                        <a class="sidebar-link" href="../users">
-                            <i class="bi bi-people"></i> <?php echo $translations["users"]; ?>
-                        </a>
-                    </li>
-                    <li class="sidebar-item">
-                        <a class="sidebar-link" href="../statistics">
-                            <i class="bi bi-bar-chart"></i> <?php echo $translations["statspage"]; ?>
-                        </a>
-                    </li>
-                    <li class="sidebar-item">
-                        <a class="sidebar-link" href="../boss/sell">
-                            <i class="bi bi-shop"></i> <?php echo $translations["sellpage"]; ?>
-                        </a>
-                    </li>
-                    <li class="sidebar-item">
-                        <a href="../invoices/" class="sidebar-link">
-                            <i class="bi bi-receipt"></i> <?php echo $translations["invoicepage"]; ?>
-                        </a>
-                    </li>
-                    <?php
-                    if ($is_boss === 1) {
-                    ?>
-                        <li class="sidebar-header">
-                            <?php echo $translations["settings"]; ?>
-                        </li>
-                        <li class="sidebar-item">
-                            <a class="sidebar-link" href="../boss/mainsettings">
-                                <i class="bi bi-gear"></i>
-                                <span><?php echo $translations["businesspage"]; ?></span>
-                            </a>
-                        </li>
-                        <li class="sidebar-item">
-                            <a class="sidebar-link" href="../boss/workers">
-                                <i class="bi bi-people"></i>
-                                <span><?php echo $translations["workers"]; ?></span>
-                            </a>
-                        </li>
-                        <li class="sidebar-item">
-                            <a class="sidebar-link" href="../boss/packages">
-                                <i class="bi bi-box-seam"></i>
-                                <span><?php echo $translations["packagepage"]; ?></span>
-                            </a>
-                        </li>
-                        <li class="sidebar-item">
-                            <a class="sidebar-link" href="../boss/hours">
-                                <i class="bi bi-clock"></i>
-                                <span><?php echo $translations["openhourspage"]; ?></span>
-                            </a>
-                        </li>
-                        <li class="sidebar-item">
-                            <a class="sidebar-link" href="../boss/smtp">
-                                <i class="bi bi-envelope-at"></i>
-                                <span><?php echo $translations["mailpage"]; ?></span>
-                            </a>
-                        </li>
-                        <li class="sidebar-item">
-                            <a class="sidebar-link" href="../boss/chroom">
-                                <i class="bi bi-duffle"></i>
-                                <span><?php echo $translations["chroompage"]; ?></span>
-                            </a>
-                        </li>
-                        <li class="sidebar-item">
-                            <a class="sidebar-link" href="../boss/rule">
-                                <i class="bi bi-file-ruled"></i>
-                                <span><?php echo $translations["rulepage"]; ?></span>
-                            </a>
-                        </li>
-                    <?php
-                    }
-                    ?>
-                    <li class="sidebar-header">
-                        <?php echo $translations["shopcategory"]; ?>
-
-                    </li>
-                    <li class="sidebar-item">
-                        <!-- <a class="sidebar-ling" href="../shop/gateway">
-                            <i class="bi bi-shield-lock"></i>
-                            <span><?php echo $translations["gatewaypage"]; ?></span>
-                        </a> -->
-                        <a class="sidebar-ling" href="../shop/tickets">
-                            <i class="bi bi-ticket"></i>
-                            <span><?php echo $translations["ticketspage"]; ?></span>
-                        </a>
-                    </li>
-                    <li class="sidebar-header">
-                        <?php echo $translations["trainersclass"]; ?>
-                    </li>
-                    <li><a class="sidebar-link" href="../trainers/timetable">
-                            <i class="bi bi-calendar-event"></i>
-                            <span><?php echo $translations["timetable"]; ?></span>
-                        </a></li>
-                    <li><a class="sidebar-link" href="../trainers/personal">
-                            <i class="bi bi-award"></i>
-                            <span><?php echo $translations["trainers"]; ?></span>
-                        </a></li>
-                    <li class="sidebar-header"><?php echo $translations["other-header"]; ?></li>
-                    <?php
-                    if ($is_boss === 1) {
-                    ?>
-                        <li class="sidebar-item">
-                            <a class="sidebar-ling" href="../updater">
-                                <i class="bi bi-cloud-download"></i>
-                                <span><?php echo $translations["updatepage"]; ?></span>
-                                <?php if ($is_new_version_available) : ?>
-                                    <span class="sidebar-badge badge">
-                                        <i class="bi bi-exclamation-circle"></i>
-                                    </span>
-                                <?php endif; ?>
-                            </a>
-                        </li>
-                    <?php
-                    }
-                    ?>
-                    <li class="sidebar-item">
-                        <a class="sidebar-ling" href="../log">
-                            <i class="bi bi-clock-history"></i>
-                            <span><?php echo $translations["logpage"]; ?></span>
-                        </a>
-                    </li>
-                </ul><br>
-            </div>
+            <?php
+            $current_page = 'dashboard';
+            require_once __DIR__ . '/../../includes/admin_sidebar.php';
+            ?>
             <br>
             <div class="col-sm-10">
                 <div class="d-none topnav d-sm-inline-block">
